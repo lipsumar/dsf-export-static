@@ -1,6 +1,6 @@
 {
   "name": "dsf-export-static",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "description": "Export a static version of DSF UI (https://github.com/lipsumar/design-system-framework)",
   "main": "index.js",
   "scripts": {

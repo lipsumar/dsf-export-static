@@ -64,6 +64,7 @@ module.exports = function(dsf, done){
 
         require(path.join(dsf.dirname,'lib/server.js'))(dsf); // start server ourselves
 
+
         async.series([
             log('Clear out/export-static'),
             rm(to('out/export-static')),

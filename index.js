@@ -7,6 +7,41 @@ var fsExtra = require('fs-extra'),
 module.exports = function(dsf, done){
     'use strict';
 
+    var options = {};
+
+    // Register a custom type to define a custom rendering of html
+    dsf.registerResourceType('export-static-html', function(component, callback){
+
+        var doc = dsf.createPreviewDocument();
+        doc.addComponent(component);
+        doc.render({}, function(err, html){
+            if(err){
+                throw err;
+            }
+
+            if(options.basehref){
+                html = html
+                    // add base href
+                    .split('<head>').join('<head>\n\t<base href="'+options.basehref+'">\n')
+
+                    // make "root urls" relatives
+                    .split('href="/').join('href="')
+                    .split('src="/').join('src="');
+            }
+
+
+            callback(err, html);
+        });
+
+    });
+
+
+    ///@TODO find quickly a way to do this in a cleaner way. Maybe at the same time as registerResourceType
+    dsf.getDefaultConfig().glob['export-static-html'] = dsf.getConfig().glob.html;
+    dsf.getConfig().glob['export-static-html'] = dsf.getConfig().glob.html;
+    console.log(dsf.getConfig().glob);
+
+
     dsf.start();
 
     var to = dsf.util.path.absolute.bind(dsf.util.path),
@@ -32,6 +67,9 @@ module.exports = function(dsf, done){
         urlToFile = function(url, file){
             return function(callback){
                 request(url, function (err, response, body) {
+                    if(err){
+                        throw err;
+                    }
                     fs.writeFile(file, body, callback);
                 });
             };
@@ -44,13 +82,13 @@ module.exports = function(dsf, done){
                 mkdirp(to('out/export-static/build/'+component.id)),
 
                 // index.html
-                urlToFile(url('/build/'+component.id), to('out/export-static/build/'+component.id+'/index.html')),
+                urlToFile(url('/build/'+component.id+'/export-static-html'), to('out/export-static/build/'+component.id+'/index.html')),
 
                 // css
                 urlToFile(url('/build/'+component.id+'/css'), to('out/export-static/build/'+component.id+'/css.css')),
 
                 // js
-                urlToFile(url('/build/'+component.id+'/js'), to('out/export-static/build/'+component.id+'/js')),
+                urlToFile(url('/build/'+component.id+'/js'), to('out/export-static/build/'+component.id+'/js.js')),
 
                 // doc
                 urlToFile(url('/build/'+component.id+'/doc'), to('out/export-static/build/'+component.id+'/doc')),
@@ -60,7 +98,14 @@ module.exports = function(dsf, done){
 
         };
 
-    dsf.registerCliPlugin('dsf-export-static', function(options, callback){
+    var cliOpts = [
+        {
+            name: 'basehref',
+            type: String
+        }
+    ];
+    dsf.registerCliPlugin('dsf-export-static', cliOpts, function(opts, callback){
+        options = opts;
 
          // start server ourselves
         require(path.join(dsf.dirname,'lib/server.js'))(dsf, function(){
@@ -72,9 +117,8 @@ module.exports = function(dsf, done){
                 log('Create out directory'),
                 mkdirp(to('out/export-static')),
 
-                log('Copy static UI files'),
-                copy(from('public/index.html'), to('out/export-static/index.html')),
-                copy(from('public/css'), to('out/export-static/css')),
+                log('Copy UI document'),
+                urlToFile(url('/build/_plugin/ui/export-static-html'), to('out/export-static/index.html')),
 
                 log('Build components'),
                 function(callback){
@@ -88,6 +132,9 @@ module.exports = function(dsf, done){
                 log('Done !')
 
             ], callback);
+
+
+
         });
 
 

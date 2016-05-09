@@ -62,32 +62,35 @@ module.exports = function(dsf, done){
 
     dsf.registerCliPlugin('dsf-export-static', function(options, callback){
 
-        require(path.join(dsf.dirname,'lib/server.js'))(dsf); // start server ourselves
+         // start server ourselves
+        require(path.join(dsf.dirname,'lib/server.js'))(dsf, function(){
+
+            async.series([
+                log('Clear out/export-static'),
+                rm(to('out/export-static')),
+
+                log('Create out directory'),
+                mkdirp(to('out/export-static')),
+
+                log('Copy static UI files'),
+                copy(from('public/index.html'), to('out/export-static/index.html')),
+                copy(from('public/css'), to('out/export-static/css')),
+
+                log('Build components'),
+                function(callback){
+                    async.eachSeries(dsf.getComponents(), buildComponent, callback);
+                },
+
+                log('Build DSF resources'),
+                urlToFile(url('/components'), to('out/export-static/components')),
+                urlToFile(url('/plugins'), to('out/export-static/plugins')),
+
+                log('Done !')
+
+            ], callback);
+        });
 
 
-        async.series([
-            log('Clear out/export-static'),
-            rm(to('out/export-static')),
-
-            log('Create out directory'),
-            mkdirp(to('out/export-static')),
-
-            log('Copy static UI files'),
-            copy(from('public/index.html'), to('out/export-static/index.html')),
-            copy(from('public/css'), to('out/export-static/css')),
-
-            log('Build components'),
-            function(callback){
-                async.eachSeries(dsf.getComponents(), buildComponent, callback);
-            },
-
-            log('Build DSF resources'),
-            urlToFile(url('/components'), to('out/export-static/components')),
-            urlToFile(url('/plugins'), to('out/export-static/plugins')),
-
-            log('Done !')
-
-        ], callback);
     });
 
     done();
